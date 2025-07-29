@@ -1,14 +1,34 @@
-from query_sender import send_query
-from utils import format_results
+from embedder import Embedder
+from search import search_documents
 
-def cli():
-    print("\n🧠 Welcome to Document Finder CLI!")
+def main():
+    print("🧠 Loading embedding model...")
+    embedder = Embedder()
+
     while True:
-        q = input("🔍 Enter search query (or 'exit'): ").strip()
-        if q.lower() == "exit":
+        query = input("\n🔎 Enter search query (or 'exit'): ").strip()
+        if query.lower() in ["exit", "quit"]:
+            print("👋 Exiting.")
             break
-        results = send_query(q, top_k=10)  # ✅ Changed from 5 to 10 for more results
-        print(format_results(results))
+        if not query:
+            print("⚠ Please enter a valid query.")
+            continue
+
+        try:
+            results = search_documents(query, embedder)
+            if not results:
+                print("❌ No matching documents found.")
+                continue
+
+            print("\n🔍 Top Matches:")
+            for i, res in enumerate(results, 1):
+                print(f"{i}. 📄 {res['filename']}")
+                print(f"   📁 Path: {res['path']}")
+                print(f"   🕒 Modified: {res['modified']}")
+                print(f"   📦 Type: {res['extension']}\n")
+
+        except Exception as e:
+            print(f"❌ Error during search: {e}")
 
 if __name__ == "__main__":
-    cli()
+    main()

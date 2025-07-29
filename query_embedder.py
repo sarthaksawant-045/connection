@@ -7,7 +7,7 @@ class QueryEmbedder:
     Converts text queries and documents into vector embeddings using a sentence transformer.
     """
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def _init_(self, model_name: str = "all-MiniLM-L6-v2"):
         """
         Initialize the embedding model.
         

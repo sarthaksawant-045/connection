@@ -54,6 +54,7 @@ def get_filetype_by_path(path):
             cursor = conn.cursor()
             cursor.execute("SELECT extension FROM documents WHERE path = ?", (path,))
             row = cursor.fetchone()
+            
             return row[0] if row else "Unknown"
     except Exception as e:
         print(f"[DB ERROR] Failed to fetch filetype for {path}: {e}")

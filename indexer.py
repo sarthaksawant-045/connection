@@ -1,50 +1,30 @@
+# ✅ indexer.py
 import os
 import pickle
 import faiss
-import numpy as np
-from query_embedder import QueryEmbedder
+from embedder import Embedder
 
-# Paths to store the FAISS index and metadata
-<<<<<<< HEAD
-INDEX_PATH = "vector_storeAaru/index.faiss"
-META_PATH = "vector_storeAaru/meta.pkl"
-=======
-INDEX_PATH = "vector_store/index.faiss"
-META_PATH = "vector_store/meta.pkl"
->>>>>>> main
+INDEX_PATH = "Aaryan_store/index.faiss"
+META_PATH = "Aaryan_store/meta.pkl"
 
-# Load the embedder
-embedder = QueryEmbedder()
+embedder = Embedder()
 
-def save_index(index, metadata):
+def index_documents(documents: dict):
+    texts = [v["content"] if v["content"] else v["filename"] for v in documents.values()]
+    metadata = list(documents.values())
+
+    print(f"🧠 Starting embedding for {len(texts)} documents...")
+    vectors = embedder.embed_texts(texts)
+    print("✅ Embedding complete.")
+
+    faiss.normalize_L2(vectors)
+    index = faiss.IndexFlatIP(vectors.shape[1])
+    index.add(vectors)
+
     os.makedirs(os.path.dirname(INDEX_PATH), exist_ok=True)
     faiss.write_index(index, INDEX_PATH)
 
     with open(META_PATH, "wb") as f:
-        pickle.dump(metadata, f)
-    print(f"✅ FAISS index and metadata saved at {INDEX_PATH}")
+        pickle.dump(documents, f)
 
-def index_documents(documents: dict):
-    """
-    Takes parsed documents and creates a FAISS index.
-    
-    Args:
-        documents (dict): { filepath: content }
-    """
-    if not documents:
-        print("⚠️ No documents to index.")
-        return
-
-    print("📐 Embedding documents...")
-    filepaths = list(documents.keys())
-    contents = list(documents.values())
-
-    embeddings = embedder.embed_documents(contents)
-
-    print("📊 Building FAISS index...")
-    dim = embeddings.shape[1]
-    index = faiss.IndexFlatL2(dim)
-    index.add(embeddings)
-
-    print(f"✅ Indexed {len(filepaths)} documents.")
-    save_index(index, filepaths)
+    print(f"✅ FAISS index saved to '{INDEX_PATH}'. Total documents indexed: {len(documents)}")
