@@ -47,15 +47,51 @@ def insert_documents(docs: dict):
         conn.commit()
     return inserted
 
-# ✅ NEW: Helper to get extension (filetype) from DB using path
+# ✅ Helper to get extension (filetype) from DB using path
 def get_filetype_by_path(path):
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT extension FROM documents WHERE path = ?", (path,))
             row = cursor.fetchone()
-            
             return row[0] if row else "Unknown"
     except Exception as e:
         print(f"[DB ERROR] Failed to fetch filetype for {path}: {e}")
         return "Unknown"
+
+# ---------- NEW HELPERS FOR SMART RESCAN ----------
+
+def get_all_doc_stats():
+    """Return {path: (size, modified)} from the documents table."""
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute("SELECT path, size, modified FROM documents")
+        return {row[0]: (row[1], row[2]) for row in cur.fetchall()}
+
+def upsert_document(path, filename, ext, size, modified, content=None):
+    """Insert or update a single document row (+ FTS if content provided)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+            INSERT INTO documents (filename, path, extension, size, modified)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(path) DO UPDATE SET
+                filename=excluded.filename,
+                extension=excluded.extension,
+                size=excluded.size,
+                modified=excluded.modified
+        """, (filename, path, ext, size, modified))
+        if content is not None:
+            # Replace FTS content for this path (delete then insert)
+            conn.execute("DELETE FROM documents_fts WHERE path = ?", (path,))
+            conn.execute("""
+                INSERT INTO documents_fts (filename, path, content)
+                VALUES (?, ?, ?)
+            """, (filename, path, content))
+        conn.commit()
+
+def delete_document(path):
+    """Delete a document and its FTS row by exact path."""
+    with sqlite3.connect(DB_PATH) as conn:
+        # Delete FTS first (no ON DELETE CASCADE on virtual table)
+        conn.execute("DELETE FROM documents_fts WHERE path = ?", (path,))
+        conn.execute("DELETE FROM documents WHERE path = ?", (path,))
+        conn.commit()
